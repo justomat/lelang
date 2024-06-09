@@ -1,0 +1,1 @@
+read [properties.py](https://github.com/justomat/lelang/blob/main/lelang/spiders/properties.py), [items.py](https://github.com/justomat/lelang/blob/main/lelang/items.py) and [pipelines.py](https://github.com/justomat/lelang/blob/main/lelang/pipelines.py)
