@@ -179,6 +179,16 @@ async fn cmd_detail(
     conn: &duckdb::Connection,
     scrape_all: bool,
 ) -> Result<()> {
+    // Load .env silently
+    let _ = dotenvy::dotenv();
+    let api_key = std::env::var("GOOGLE_MAPS_API_KEY").ok();
+    if api_key.is_none() {
+        tracing::warn!("GOOGLE_MAPS_API_KEY not set. Geocoding will be skipped.");
+    }
+
+    let current_month = chrono::Utc::now().format("%Y-%m").to_string();
+    let geocode_client = reqwest::Client::new();
+
     let lot_ids = if scrape_all {
         db::get_all_lot_ids(conn)?
     } else {
@@ -206,11 +216,47 @@ async fn cmd_detail(
 
     let mut success = 0usize;
     let mut failed = 0usize;
+    let mut geocoded_count = 0usize;
 
     for (id, result) in &results {
         match result {
             Ok(detail) => {
-                if let Err(e) = db::upsert_lot_detail(conn, detail, None, None) {
+                let mut lat = None;
+                let mut lng = None;
+
+                // Attempt to geocode if we have an API key and haven't exceeded the 1000/month limit
+                if let Some(key) = &api_key {
+                    let address = detail.content
+                        .as_ref()
+                        .and_then(|c| c.barangs.as_ref())
+                        .and_then(|b| b.first())
+                        .and_then(|b| b.alamat.clone())
+                        .or_else(|| detail.nama_lokasi.clone());
+
+                    if let Some(addr) = address {
+                        if !addr.trim().is_empty() {
+                            let quota_used = geocoding::get_geocode_count(conn, &current_month).unwrap_or(0);
+                            if quota_used < 1000 {
+                                match geocoding::geocode(&geocode_client, key, &addr).await {
+                                    Ok(Some(location)) => {
+                                        lat = Some(location.lat);
+                                        lng = Some(location.lng);
+                                        let _ = geocoding::increment_geocode_count(conn, &current_month);
+                                        geocoded_count += 1;
+                                    }
+                                    Ok(None) => {}
+                                    Err(e) => tracing::warn!("Failed to geocode address '{}': {}", addr, e),
+                                }
+                                // Polite delay to respect API limits
+                                tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+                            } else {
+                                tracing::debug!("Geocoding quota (1000) reached for {}, skipping.", current_month);
+                            }
+                        }
+                    }
+                }
+
+                if let Err(e) = db::upsert_lot_detail(conn, detail, lat, lng) {
                     eprintln!("  DB error for {id}: {e:#}");
                     failed += 1;
                 } else {
@@ -223,7 +269,7 @@ async fn cmd_detail(
         }
     }
 
-    println!("✅ Details: {success} saved, {failed} failed\n");
+    println!("✅ Details: {success} saved, {failed} failed (Geocoded this run: {geocoded_count})\n");
 
     Ok(())
 }
