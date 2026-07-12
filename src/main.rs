@@ -1,5 +1,6 @@
 mod api;
 mod db;
+mod geocoding;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
