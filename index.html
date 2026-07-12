@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lelang Maps Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- DuckDB WASM -->
+    <script type="module" src="app.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div id="status-panel" class="glass-panel">
+        <div class="header-content">
+            <div>
+                <h1>Lelang <span>Maps</span></h1>
+                <p class="subtitle">DuckDB WASM + Google Maps</p>
+            </div>
+            <div class="status-container">
+                <div id="status-indicator" class="pulse loading"></div>
+                <p id="status-text">Initializing...</p>
+            </div>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-label">Lots Loaded:</span>
+                <span id="stat-loaded">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Geocoded (This Month):</span>
+                <span id="stat-geocoded">0 / 1000</span>
+            </div>
+        </div>
+        
+        <div class="progress-container" id="geocoding-progress-container" style="display: none;">
+            <p class="stat-label">Geocoding Queue...</p>
+            <div class="progress-bar-bg">
+                <div id="geocoding-progress-fill" class="progress-bar-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Key Modal -->
+    <div id="api-key-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content glass-panel">
+            <h2>Google Maps API Key Required</h2>
+            <p>We couldn't load the API key from <code>.env</code>. Please enter your Google Maps API key to continue.</p>
+            <input type="text" id="api-key-input" placeholder="AIzaSy...">
+            <button id="save-api-key-btn">Save & Reload</button>
+        </div>
+    </div>
+</body>
+</html>
