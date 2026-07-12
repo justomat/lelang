@@ -1,8 +1,6 @@
 import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.1-dev106.0/+esm';
 
-const MONTHLY_LIMIT = 1000;
 let map;
-let geocoder;
 const markers = [];
 
 async function getApiKey() {
@@ -58,24 +56,6 @@ function loadGoogleMaps(apiKey) {
     });
 }
 
-function getGeocodeCount() {
-    const month = new Date().toISOString().slice(0, 7); // YYYY-MM
-    const key = `geocode_count_${month}`;
-    return parseInt(localStorage.getItem(key) || '0', 10);
-}
-
-function incrementGeocodeCount() {
-    const month = new Date().toISOString().slice(0, 7);
-    const key = `geocode_count_${month}`;
-    const current = getGeocodeCount();
-    localStorage.setItem(key, (current + 1).toString());
-    return current + 1;
-}
-
-function updateGeocodeStats() {
-    document.getElementById('stat-geocoded').textContent = `${getGeocodeCount()} / ${MONTHLY_LIMIT}`;
-}
-
 async function init() {
     const statusText = document.getElementById('status-text');
     const statusIndicator = document.getElementById('status-indicator');
@@ -100,8 +80,6 @@ async function init() {
             disableDefaultUI: true,
             zoomControl: true,
         });
-        geocoder = new google.maps.Geocoder();
-        updateGeocodeStats();
 
         // 2. Load DuckDB & Data
         setStatus("Initializing DuckDB Engine...", "loading");
@@ -135,119 +113,57 @@ async function init() {
         
         setStatus("Extracting Lot Locations...", "loading");
 
-        // 3. Query Lots
+        // 3. Query Lots with pre-computed coordinates
         const query = await conn.query(`
             SELECT 
                 c.lot_lelang_id, 
                 c.nama_lot_lelang, 
                 c.nilai_limit, 
                 c.status,
-                COALESCE(d.barangs_json->0->>'alamat', c.nama_lokasi) as address
+                COALESCE(d.barangs_json->0->>'alamat', c.nama_lokasi) as address,
+                d.latitude as lat,
+                d.longitude as lng
             FROM 'catalog.parquet' c
             LEFT JOIN 'details.parquet' d ON c.lot_lelang_id = d.lot_lelang_id
-            WHERE address IS NOT NULL AND address != ''
+            WHERE d.latitude IS NOT NULL AND d.longitude IS NOT NULL
             LIMIT 500
         `);
         const rows = query.toArray();
         
         document.getElementById('stat-loaded').textContent = rows.length.toString();
-        setStatus(`Found ${rows.length} lots. Geocoding...`, "loading");
         
-        // 4. Geocode and Plot
-        const progressContainer = document.getElementById('geocoding-progress-container');
-        const progressFill = document.getElementById('geocoding-progress-fill');
-        progressContainer.style.display = 'block';
-
-        let processed = 0;
+        // 4. Plot Markers
+        setStatus(`Plotting ${rows.length} lots...`, "loading");
 
         for (const row of rows) {
-            processed++;
-            progressFill.style.width = `${(processed / rows.length) * 100}%`;
+            const marker = new google.maps.Marker({
+                position: { lat: row.lat, lng: row.lng },
+                map: map,
+                title: row.nama_lot_lelang
+            });
             
-            if (!row.address) continue;
+            const infoWindow = new google.maps.InfoWindow({
+                content: `
+                    <div class="info-window">
+                        <span class="status">${row.status || 'UNKNOWN'}</span>
+                        <h3>${row.nama_lot_lelang}</h3>
+                        <p>${row.address || 'No Address'}</p>
+                        <p class="price">Rp ${Number(row.nilai_limit).toLocaleString()}</p>
+                    </div>
+                `
+            });
+
+            marker.addListener("click", () => {
+                infoWindow.open({
+                    anchor: marker,
+                    map,
+                });
+            });
             
-            const cacheKey = `geo_${row.address}`;
-            let location = null;
-            
-            // Check cache
-            const cachedStr = localStorage.getItem(cacheKey);
-            if (cachedStr) {
-                try {
-                    location = JSON.parse(cachedStr);
-                } catch(e) {}
-            }
-
-            if (!location) {
-                // Check quota
-                if (getGeocodeCount() >= MONTHLY_LIMIT) {
-                    setStatus("Geocoding limit reached for this month.", "error");
-                    break;
-                }
-
-                // API Call
-                try {
-                    const result = await new Promise((resolve, reject) => {
-                        geocoder.geocode({ address: row.address }, (results, status) => {
-                            if (status === 'OK') {
-                                resolve({
-                                    lat: results[0].geometry.location.lat(),
-                                    lng: results[0].geometry.location.lng()
-                                });
-                            } else {
-                                reject(status);
-                            }
-                        });
-                    });
-                    
-                    location = result;
-                    localStorage.setItem(cacheKey, JSON.stringify(location));
-                    incrementGeocodeCount();
-                    updateGeocodeStats();
-                    
-                    // Throttle
-                    await new Promise(r => setTimeout(r, 400));
-                } catch (e) {
-                    console.warn("Geocode failed for:", row.address, e);
-                    // Add delay even on failure to avoid hitting limits harder
-                    await new Promise(r => setTimeout(r, 500));
-                    continue;
-                }
-            }
-
-            // Create Marker
-            if (location) {
-                const marker = new google.maps.Marker({
-                    position: location,
-                    map: map,
-                    title: row.nama_lot_lelang
-                });
-                
-                const infoWindow = new google.maps.InfoWindow({
-                    content: `
-                        <div class="info-window">
-                            <span class="status">${row.status || 'UNKNOWN'}</span>
-                            <h3>${row.nama_lot_lelang}</h3>
-                            <p>${row.address}</p>
-                            <p class="price">Rp ${Number(row.nilai_limit).toLocaleString()}</p>
-                        </div>
-                    `
-                });
-
-                marker.addListener("click", () => {
-                    infoWindow.open({
-                        anchor: marker,
-                        map,
-                    });
-                });
-                
-                markers.push(marker);
-            }
+            markers.push(marker);
         }
         
-        setStatus("Geocoding Complete", "success");
-        setTimeout(() => {
-            progressContainer.style.display = 'none';
-        }, 2000);
+        setStatus("Map Ready", "success");
 
     } catch (e) {
         console.error(e);
