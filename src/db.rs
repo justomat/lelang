@@ -52,11 +52,22 @@ pub fn init_db(db_path: &str) -> Result<Connection> {
             organizer_telepon     VARCHAR,
             organizer_alamat      VARCHAR,
             barangs_json          VARCHAR,
+            latitude              DOUBLE,
+            longitude             DOUBLE,
             scraped_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS geocode_stats (
+            month VARCHAR PRIMARY KEY,
+            count INTEGER
         );
         ",
     )
     .context("Failed to create tables")?;
+
+    // Add columns if they don't exist (for backward compatibility)
+    let _ = conn.execute("ALTER TABLE lot_details ADD COLUMN IF NOT EXISTS latitude DOUBLE", []);
+    let _ = conn.execute("ALTER TABLE lot_details ADD COLUMN IF NOT EXISTS longitude DOUBLE", []);
 
     info!("Database initialized at {db_path}");
     Ok(conn)
@@ -119,7 +130,7 @@ pub fn upsert_catalog_items(conn: &Connection, items: &[CatalogItem]) -> Result<
 }
 
 /// Upsert a lot detail into the lot_details table.
-pub fn upsert_lot_detail(conn: &Connection, detail: &LotDetail) -> Result<()> {
+pub fn upsert_lot_detail(conn: &Connection, detail: &LotDetail, lat: Option<f64>, lng: Option<f64>) -> Result<()> {
     let (seller_nama, seller_org, seller_tel, seller_addr, seller_kota, seller_prov) =
         if let Some(ref content) = detail.content {
             if let Some(ref s) = content.seller {
@@ -165,8 +176,8 @@ pub fn upsert_lot_detail(conn: &Connection, detail: &LotDetail) -> Result<()> {
             seller_nama, seller_organisasi, seller_telepon, seller_alamat,
             seller_kota, seller_provinsi,
             organizer_unit_kerja, organizer_bank, organizer_telepon, organizer_alamat,
-            barangs_json, scraped_at
-        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, now())
+            barangs_json, latitude, longitude, scraped_at
+        ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, now())
         ON CONFLICT (id) DO UPDATE SET
             lot_lelang_id = excluded.lot_lelang_id,
             kode_lot = excluded.kode_lot,
@@ -182,6 +193,8 @@ pub fn upsert_lot_detail(conn: &Connection, detail: &LotDetail) -> Result<()> {
             organizer_telepon = excluded.organizer_telepon,
             organizer_alamat = excluded.organizer_alamat,
             barangs_json = excluded.barangs_json,
+            latitude = excluded.latitude,
+            longitude = excluded.longitude,
             scraped_at = now()",
         duckdb::params![
             detail.id,
@@ -199,6 +212,8 @@ pub fn upsert_lot_detail(conn: &Connection, detail: &LotDetail) -> Result<()> {
             org_tel,
             org_addr,
             barangs_json,
+            lat,
+            lng,
         ],
     )?;
 

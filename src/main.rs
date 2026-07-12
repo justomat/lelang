@@ -209,7 +209,7 @@ async fn cmd_detail(
     for (id, result) in &results {
         match result {
             Ok(detail) => {
-                if let Err(e) = db::upsert_lot_detail(conn, detail) {
+                if let Err(e) = db::upsert_lot_detail(conn, detail, None, None) {
                     eprintln!("  DB error for {id}: {e:#}");
                     failed += 1;
                 } else {
