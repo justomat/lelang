@@ -156,8 +156,8 @@ async function init() {
         await loadGoogleMaps(apiKey);
         
         map = new google.maps.Map(document.getElementById("map"), {
-            center: { lat: -2.5489, lng: 118.0149 }, // Center of Indonesia
-            zoom: 5,
+            center: { lat: -6.2088, lng: 106.8456 }, // Jakarta
+            zoom: 10,
             mapId: "DEMO_MAP_ID",
             disableDefaultUI: true,
             zoomControl: true,
