@@ -58,6 +58,10 @@ function loadGoogleMaps(apiKey) {
 }
 
 function plotMarkers(rows) {
+    if (window.markerCluster) {
+        window.markerCluster.clearMarkers();
+    }
+
     // Clear existing markers
     markers.forEach(m => m.setMap(null));
     markers.length = 0;
@@ -68,7 +72,6 @@ function plotMarkers(rows) {
     for (const row of rows) {
         const marker = new google.maps.Marker({
             position: { lat: row.lat, lng: row.lng },
-            map: map,
             title: row.nama_lot_lelang
         });
         
@@ -90,6 +93,12 @@ function plotMarkers(rows) {
         });
         
         markers.push(marker);
+    }
+    
+    if (!window.markerCluster) {
+        window.markerCluster = new markerClusterer.MarkerClusterer({ map, markers });
+    } else {
+        window.markerCluster.addMarkers(markers);
     }
 }
 
@@ -202,7 +211,6 @@ async function init() {
             FROM 'catalog.parquet' c
             LEFT JOIN 'details.parquet' d ON c.lot_lelang_id = d.lot_lelang_id
             WHERE d.latitude IS NOT NULL AND d.longitude IS NOT NULL
-            LIMIT 500
         `);
         const rows = query.toArray();
         
@@ -249,7 +257,6 @@ async function init() {
                 FROM 'catalog.parquet' c
                 LEFT JOIN 'details.parquet' d ON c.lot_lelang_id = d.lot_lelang_id
                 WHERE ${whereClauses.join(' AND ')}
-                LIMIT 500
             `;
 
             try {
