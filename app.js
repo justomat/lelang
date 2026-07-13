@@ -57,6 +57,42 @@ function loadGoogleMaps(apiKey) {
     });
 }
 
+function plotMarkers(rows) {
+    // Clear existing markers
+    markers.forEach(m => m.setMap(null));
+    markers.length = 0;
+    activeInfoWindow = null;
+
+    document.getElementById('stat-loaded').textContent = rows.length.toString();
+
+    for (const row of rows) {
+        const marker = new google.maps.Marker({
+            position: { lat: row.lat, lng: row.lng },
+            map: map,
+            title: row.nama_lot_lelang
+        });
+        
+        const infoWindow = new google.maps.InfoWindow({
+            content: `
+                <div class="info-window">
+                    <span class="status">${row.status || 'UNKNOWN'}</span>
+                    <h3><a href="https://lelang.go.id/lot-lelang/detail/${row.lot_lelang_id}" target="_blank" style="text-decoration: none; color: inherit;">${row.nama_lot_lelang}</a></h3>
+                    <p>${row.address || 'No Address'}</p>
+                    <p class="price">Rp ${Number(row.nilai_limit).toLocaleString()}</p>
+                </div>
+            `
+        });
+
+        marker.addListener("click", () => {
+            if (activeInfoWindow) activeInfoWindow.close();
+            infoWindow.open({ anchor: marker, map });
+            activeInfoWindow = infoWindow;
+        });
+        
+        markers.push(marker);
+    }
+}
+
 async function populateLocationDropdowns(conn) {
     try {
         const provQuery = await conn.query(`
@@ -174,40 +210,69 @@ async function init() {
         
         // 4. Plot Markers
         setStatus(`Plotting ${rows.length} lots...`, "loading");
-
-        for (const row of rows) {
-            const marker = new google.maps.Marker({
-                position: { lat: row.lat, lng: row.lng },
-                map: map,
-                title: row.nama_lot_lelang
-            });
-            
-            const infoWindow = new google.maps.InfoWindow({
-                content: `
-                    <div class="info-window">
-                        <span class="status">${row.status || 'UNKNOWN'}</span>
-                        <h3><a href="https://lelang.go.id/lot-lelang/detail/${row.lot_lelang_id}" target="_blank" style="text-decoration: none; color: inherit;">${row.nama_lot_lelang}</a></h3>
-                        <p>${row.address || 'No Address'}</p>
-                        <p class="price">Rp ${Number(row.nilai_limit).toLocaleString()}</p>
-                    </div>
-                `
-            });
-
-            marker.addListener("click", () => {
-                if (activeInfoWindow) {
-                    activeInfoWindow.close();
-                }
-                infoWindow.open({
-                    anchor: marker,
-                    map,
-                });
-                activeInfoWindow = infoWindow;
-            });
-            
-            markers.push(marker);
-        }
-        
+        plotMarkers(rows);
         setStatus("Map Ready", "success");
+
+        // Filter Logic
+        document.getElementById('btn-apply-filters').addEventListener('click', async () => {
+            setStatus("Applying Filters...", "loading");
+            
+            const cats = [];
+            if (document.getElementById('cat-tanah').checked) cats.push("c.nama_lot_lelang ILIKE '%tanah%'");
+            if (document.getElementById('cat-rumah').checked) cats.push("c.nama_lot_lelang ILIKE '%rumah%'");
+            if (document.getElementById('cat-ruko').checked) cats.push("c.nama_lot_lelang ILIKE '%ruko%'");
+            
+            const minPrice = document.getElementById('price-min').value;
+            const maxPrice = document.getElementById('price-max').value;
+            const prov = document.getElementById('sel-provinsi').value;
+            const kota = document.getElementById('sel-kota').value;
+
+            let whereClauses = ["d.latitude IS NOT NULL AND d.longitude IS NOT NULL"];
+            
+            if (cats.length > 0) {
+                whereClauses.push(`(${cats.join(' OR ')})`);
+            }
+            if (minPrice) whereClauses.push(`c.nilai_limit >= ${minPrice}`);
+            if (maxPrice) whereClauses.push(`c.nilai_limit <= ${maxPrice}`);
+            if (prov) whereClauses.push(`d.seller_provinsi = '${prov.replace(/'/g, "''")}'`);
+            if (kota) whereClauses.push(`d.seller_kota = '${kota.replace(/'/g, "''")}'`);
+
+            const sql = `
+                SELECT 
+                    c.lot_lelang_id, 
+                    c.nama_lot_lelang, 
+                    c.nilai_limit, 
+                    c.status,
+                    COALESCE(d.barangs_json->0->>'alamat', c.nama_lokasi) as address,
+                    d.latitude as lat,
+                    d.longitude as lng
+                FROM 'catalog.parquet' c
+                LEFT JOIN 'details.parquet' d ON c.lot_lelang_id = d.lot_lelang_id
+                WHERE ${whereClauses.join(' AND ')}
+                LIMIT 500
+            `;
+
+            try {
+                const res = await window.dbConn.query(sql);
+                plotMarkers(res.toArray());
+                setStatus("Filters Applied", "success");
+            } catch (e) {
+                setStatus("Filter Error", "error");
+                console.error(e);
+            }
+        });
+
+        document.getElementById('btn-reset-filters').addEventListener('click', async () => {
+            document.getElementById('cat-tanah').checked = false;
+            document.getElementById('cat-rumah').checked = false;
+            document.getElementById('cat-ruko').checked = false;
+            document.getElementById('price-min').value = '';
+            document.getElementById('price-max').value = '';
+            document.getElementById('sel-provinsi').value = '';
+            document.getElementById('sel-kota').value = '';
+            
+            document.getElementById('btn-apply-filters').click();
+        });
 
     } catch (e) {
         console.error(e);
