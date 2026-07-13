@@ -57,6 +57,42 @@ function loadGoogleMaps(apiKey) {
     });
 }
 
+async function populateLocationDropdowns(conn) {
+    try {
+        const provQuery = await conn.query(`
+            SELECT DISTINCT seller_provinsi 
+            FROM 'details.parquet' 
+            WHERE seller_provinsi IS NOT NULL AND seller_provinsi != '' 
+            ORDER BY seller_provinsi
+        `);
+        const provinces = provQuery.toArray();
+        const selProvinsi = document.getElementById('sel-provinsi');
+        provinces.forEach(row => {
+            const opt = document.createElement('option');
+            opt.value = row.seller_provinsi;
+            opt.textContent = row.seller_provinsi;
+            selProvinsi.appendChild(opt);
+        });
+
+        const kotaQuery = await conn.query(`
+            SELECT DISTINCT seller_kota 
+            FROM 'details.parquet' 
+            WHERE seller_kota IS NOT NULL AND seller_kota != '' 
+            ORDER BY seller_kota
+        `);
+        const kotas = kotaQuery.toArray();
+        const selKota = document.getElementById('sel-kota');
+        kotas.forEach(row => {
+            const opt = document.createElement('option');
+            opt.value = row.seller_kota;
+            opt.textContent = row.seller_kota;
+            selKota.appendChild(opt);
+        });
+    } catch (e) {
+        console.error("Failed to populate dropdowns", e);
+    }
+}
+
 async function init() {
     const statusText = document.getElementById('status-text');
     const statusIndicator = document.getElementById('status-indicator');
@@ -112,6 +148,9 @@ async function init() {
 
         const conn = await db.connect();
         
+        await populateLocationDropdowns(conn);
+        window.dbConn = conn;
+
         setStatus("Extracting Lot Locations...", "loading");
 
         // 3. Query Lots with pre-computed coordinates
