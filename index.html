@@ -14,55 +14,57 @@
 <body>
     <div id="map"></div>
 
-    <aside id="filter-sidebar" class="glass-panel">
-        <h2>Filters</h2>
-        <div class="filter-group">
-            <h3>Kategori</h3>
-            <label><input type="checkbox" id="cat-tanah" value="tanah"> Tanah</label>
-            <label><input type="checkbox" id="cat-rumah" value="rumah"> Rumah</label>
-            <label><input type="checkbox" id="cat-ruko" value="ruko"> Ruko</label>
+    <div id="left-panel">
+        <div id="status-panel" class="glass-panel">
+            <div class="header-content">
+                <div>
+                    <h1>Lelang <span>Maps</span></h1>
+                    <p class="subtitle">DuckDB WASM + Google Maps</p>
+                </div>
+                <div class="status-container">
+                    <div id="status-indicator" class="pulse loading"></div>
+                    <p id="status-text">Initializing...</p>
+                </div>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Lots Loaded:</span>
+                    <span id="stat-loaded">0</span>
+                </div>
+            </div>
         </div>
-        
-        <div class="filter-group">
-            <h3>Harga Limit</h3>
-            <input type="number" id="price-min" placeholder="Min Harga (Rp)">
-            <input type="number" id="price-max" placeholder="Max Harga (Rp)">
-        </div>
-        
-        <div class="filter-group">
-            <h3>Lokasi</h3>
-            <select id="sel-provinsi">
-                <option value="">Semua Provinsi</option>
-            </select>
-            <select id="sel-kota">
-                <option value="">Semua Kota/Kabupaten</option>
-            </select>
-        </div>
-        
-        <div class="filter-actions">
-            <button id="btn-apply-filters">Terapkan</button>
-            <button id="btn-reset-filters" class="secondary">Reset Filter</button>
-        </div>
-    </aside>
 
-    <div id="status-panel" class="glass-panel">
-        <div class="header-content">
-            <div>
-                <h1>Lelang <span>Maps</span></h1>
-                <p class="subtitle">DuckDB WASM + Google Maps</p>
+        <aside id="filter-sidebar" class="glass-panel">
+            <h2>Filters</h2>
+            <div class="filter-group">
+                <h3>Kategori</h3>
+                <label><input type="checkbox" id="cat-tanah" value="tanah"> Tanah</label>
+                <label><input type="checkbox" id="cat-rumah" value="rumah"> Rumah</label>
+                <label><input type="checkbox" id="cat-ruko" value="ruko"> Ruko</label>
             </div>
-            <div class="status-container">
-                <div id="status-indicator" class="pulse loading"></div>
-                <p id="status-text">Initializing...</p>
+            
+            <div class="filter-group">
+                <h3>Harga Limit</h3>
+                <input type="number" id="price-min" placeholder="Min Harga (Rp)">
+                <input type="number" id="price-max" placeholder="Max Harga (Rp)">
             </div>
-        </div>
-        
-        <div class="stats-grid">
-            <div class="stat-item">
-                <span class="stat-label">Lots Loaded:</span>
-                <span id="stat-loaded">0</span>
+            
+            <div class="filter-group">
+                <h3>Lokasi</h3>
+                <select id="sel-provinsi">
+                    <option value="">Semua Provinsi</option>
+                </select>
+                <select id="sel-kota">
+                    <option value="">Semua Kota/Kabupaten</option>
+                </select>
             </div>
-        </div>
+            
+            <div class="filter-actions">
+                <button id="btn-apply-filters">Terapkan</button>
+                <button id="btn-reset-filters" class="secondary">Reset Filter</button>
+            </div>
+        </aside>
     </div>
 
     <!-- API Key Modal -->
