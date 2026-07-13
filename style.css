@@ -269,6 +269,7 @@ h1 span {
 
 #filter-sidebar {
     width: 100%;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 20px;
