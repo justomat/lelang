@@ -1,6 +1,7 @@
 import * as duckdb from 'https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.1-dev106.0/+esm';
 
 let map;
+let activeInfoWindow = null;
 const markers = [];
 
 async function getApiKey() {
@@ -146,7 +147,7 @@ async function init() {
                 content: `
                     <div class="info-window">
                         <span class="status">${row.status || 'UNKNOWN'}</span>
-                        <h3>${row.nama_lot_lelang}</h3>
+                        <h3><a href="https://lelang.go.id/lot-lelang/detail/${row.lot_lelang_id}" target="_blank" style="text-decoration: none; color: inherit;">${row.nama_lot_lelang}</a></h3>
                         <p>${row.address || 'No Address'}</p>
                         <p class="price">Rp ${Number(row.nilai_limit).toLocaleString()}</p>
                     </div>
@@ -154,10 +155,14 @@ async function init() {
             });
 
             marker.addListener("click", () => {
+                if (activeInfoWindow) {
+                    activeInfoWindow.close();
+                }
                 infoWindow.open({
                     anchor: marker,
                     map,
                 });
+                activeInfoWindow = infoWindow;
             });
             
             markers.push(marker);
