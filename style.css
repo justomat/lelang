@@ -257,3 +257,85 @@ h1 span {
     font-size: 0.75rem;
     margin-bottom: 0.5rem;
 }
+
+#filter-sidebar {
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    z-index: 10;
+}
+
+#filter-sidebar h2 {
+    font-size: 1.2rem;
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-group h3 {
+    font-size: 0.9rem;
+    margin: 0;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.filter-group label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.filter-group input[type="number"],
+.filter-group select {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.filter-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.filter-actions button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: var(--accent-color);
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-actions button:hover {
+    background: #2563eb;
+}
+
+.filter-actions button.secondary {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.filter-actions button.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
